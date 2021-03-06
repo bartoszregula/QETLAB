@@ -68,16 +68,40 @@ end
 % other CVX optimization problems, and it has better numerical accuracy.
 % The downside is that it is slightly slower for channels with few Kraus
 % operators.
-cvx_begin sdp quiet
-    cvx_precision best;
-    variable Y0(len_phi,len_phi) hermitian
-    variable Y1(len_phi,len_phi) hermitian
-    minimize norm(PartialTrace(Y0,2,dim)) + norm(PartialTrace(Y1,2,dim))
-    subject to
-        cons = [Y0,-Phi;-Phi',Y1];
-        cons + cons' >= 0; % avoid some numerical problems: CVX often thinks things aren't symmetric without this
-        Y0 >= 0;
-        Y1 >= 0;
-cvx_end
+if IsHermPreserving(Phi)
+
+    % simpler SDP for the case of Hermiticity-preserving maps
+    cvx_begin sdp quiet
+       cvx_precision best;
+       variable X(len_phi,len_phi) hermitian semidefinite
+       variable Y(len_phi,len_phi) hermitian semidefinite
+       variable mu nonnegative
+
+       minimize mu   
+       subject to
+            PartialTrace(X+Y,2,dim) <= mu*eye(dim(1));
+            Phi == X - Y;
+            X >= 0;
+            Y >= 0;
+    cvx_end
+
+    dn = cvx_optval;
+
+else
     
-dn = cvx_optval/2;
+    % original SDP
+    cvx_begin sdp quiet
+        cvx_precision best;
+        variable Y0(len_phi,len_phi) hermitian
+        variable Y1(len_phi,len_phi) hermitian
+        minimize norm(PartialTrace(Y0,2,dim)) + norm(PartialTrace(Y1,2,dim))
+        subject to
+            cons = [Y0,-Phi;-Phi',Y1];
+            cons + cons' >= 0; % avoid some numerical problems: CVX often thinks things aren't symmetric without this
+            Y0 >= 0;
+            Y1 >= 0;
+    cvx_end
+
+    dn = cvx_optval/2;
+
+end
