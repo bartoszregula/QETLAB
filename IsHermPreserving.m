@@ -26,6 +26,11 @@ if(iscell(Phi) && size(Phi,2) == 1)
     return
 end
 
+if(isa(Phi,'cvx'))
+    hp = (nnz(Phi-Phi')==0);
+    return
+end
+
 % set optional argument defaults: tol=eps^(3/4)
 [tol] = opt_args({ eps^(3/4) },varargin{:});
 
